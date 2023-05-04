@@ -1,0 +1,136 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+const app = require('../app');
+const debug = require('debug')('1-second:server');
+const http = require('http');
+const { encode, decode } = require("base64-arraybuffer");
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+var port = normalizePort(process.env.PORT || '3002');
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+
+const server = http.createServer(app);
+
+const io = require("socket.io")(server, {
+	cors: { 
+		origin: [
+			"*",
+			"http://localhost:8080",
+			"https://localhost:8080",
+			"http://localhost:3000",
+			"https://localhost:3000",
+			"https://admin.pritras.com",
+			"https://ybr.pritras.com"
+		],
+	}
+});
+
+function _arrayBufferToBase64( buffer ) {
+    var binary = '';
+    var bytes = new Uint8Array( buffer );
+    var len = bytes.byteLength;
+    for (var i = 0; i < len; i++) {
+        binary += String.fromCharCode( bytes[ i ] );
+    }
+    return window.btoa( binary );
+}
+
+io.on("connection", async (socket) => { 
+	//console.log("connection -> ", socket.id);
+	socket.emit('connection', socket.id);
+	
+	/* RaspberryPI 에서 DHT11의 정보를 읽어온다 */
+	socket.on("read_dht", (data) => {
+		io.emit('/client/read_dht', {
+			temperature: data.temperature,
+			humidity: data.humidity,
+		});
+	});
+	
+	/* RaspberryPI 에서 CAM의 정보를 읽어온다 */
+	socket.on("read_image", (data) => {
+		io.emit('/client/read_image', encode(data));
+	});
+	socket.on("disconnect", () => {
+		let socketId = socket.id;
+	});
+});
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+	// named pipe
+	return val;
+  }
+
+  if (port >= 0) {
+	// port number
+	return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+	throw error;
+  }
+
+  var bind = typeof port === 'string'
+	? 'Pipe ' + port
+	: 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+	case 'EACCES':
+	  console.error(bind + ' requires elevated privileges');
+	  process.exit(1);
+	  break;
+	case 'EADDRINUSE':
+	  console.error(bind + ' is already in use');
+	  process.exit(1);
+	  break;
+	default:
+	  throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+	? 'pipe ' + addr
+	: 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}

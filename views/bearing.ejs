@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html style="overflow: hidden; width: 100%;">
+	<head>
+        <meta name="viewport" content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, width=device-width" />
+		<title>탐지로봇 CTR</title>
+        <link href="./stylesheets/style.css?ver=1.0" rel="stylesheet" type="text/css" />
+	</head>
+	<body style="position: relative; margin: 0; background-color: white;">
+        <div id="app" style="width: 100%;">
+            <div>
+                방위각: {{ bearing }}
+            </div>
+            <div>
+                x: {{ ziro.x }}
+            </div>
+            <div>
+                y: {{ ziro.y }}
+            </div>
+            <div>
+                z: {{ ziro.z }}
+            </div>
+        </div>
+	</body>
+</html>
+<script src="https://unpkg.com/vue@3"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.0/socket.io.min.js"></script>
+
+<script>
+    const app = Vue.createApp({
+        data() {
+            return {
+                bearing: 0,
+
+                ziro: {
+                    x: 0,
+                    y: 0,
+                    z: 0,
+                }
+            }
+        },
+        methods: {
+            get_bearing: function () {
+                let vm = this;
+                // 사직 과사람
+                // let lat1 = 35.2002922;
+                // let lon1 = 129.0643557;
+
+                // // 내 집
+                // let lat2 = 35.1506961;
+                // let lon2 = 129.0369793;
+
+                // 사직 과사람
+                let lat2 = 35.2002922;
+                let lon2 = 129.0643557;
+
+                // 내 집
+                let lat1 = 35.1506961;
+                let lon1 = 129.0369793;
+
+                // 위도, 경도를 라디안 단위로 변환
+                let c_lat1 = lat1 * Math.PI / 180;
+                let c_lat2 = lat2 * Math.PI / 180;
+                let c_lon1 = lon1 * Math.PI / 180;
+                let c_lon2 = lon2 * Math.PI / 180;
+
+                let y = Math.sin(c_lon2 - c_lon1) * Math.cos(c_lat2);
+                let x = Math.cos(c_lat1) * Math.sin(c_lat2) -
+                          Math.sin(c_lat1) * Math.cos(c_lat2) * Math.cos(c_lon2 - c_lon1);
+                let θ = Math.atan2(y, x); // 방위각 (라디안)
+                let bearing = (θ * 180 / Math.PI + 360) % 360; // 방위각 (디그리, 정규화 완료)
+                vm.bearing = bearing;
+            }
+        },
+        mounted: function() {
+            let vm = this;
+            vm.get_bearing();
+
+            window.addEventListener('deviceorientation', deviceorientationHandler);
+
+            // 자이로 센서 값 변화
+            function deviceorientationHandler(event) {
+                console.log("event:", event);
+                // X축
+                vm.ziro.x = event.beta;
+                // Y축
+                vm.ziro.y = event.gamma;
+                // Z축
+                vm.ziro.z = event.alpha;
+            }
+        },
+    }).mount('#app');
+</script>

@@ -1,0 +1,21 @@
+* {
+}
+a {
+  color: #00B7FF;
+}
+.bg-default {
+  background-color: #E7E9E6;
+}
+.bg-monitor {
+  background-color: #71858C;
+}
+.w100p {
+  width: 100%;
+}
+
+.pa16 {
+  padding: 16px;
+}
+.pa8 {
+  padding: 8px;
+}

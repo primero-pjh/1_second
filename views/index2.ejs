@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html style="overflow: hidden; width: 100%; height: 100%;">
+	<head>
+        <meta name="viewport" content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, width=device-width" />
+		<title>요구조자 탐지로봇</title>
+        <link src="./public/stylesheets/style.css" rel="stylesheet" type="text/css" />
+            <link
+              rel="stylesheet"
+              href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/all.min.css" />
+	</head>
+	<body style="position: relative; margin: 0;">
+        <div id="app">
+            <div style="width: 100%;"  :style="{ height: height + 'px' }">
+                <div style="width: 100%; height: 100%;">
+                    <div style="height: 50%; background-color: black; position: relative;">
+						<div style="position: absolute; top: 0; width: 100%;">
+							<div style="display: flex; justify-content: space-between; padding: 0 8px;">
+								<div>
+									<p style="color: white; font-size: 12px;">temp: {{dht.temperature}} C hum: {{dht.humidity}} %</p>
+								</div>
+								<div>
+									<p style="color: white; font-size: 12px;">lat: {{position.latitude}} long: {{position.longitude}} </p>
+								</div>
+							</div>
+						</div>
+						<img ref="cam" style="width: 100%; height: 100%;" />
+                    </div>
+                    <div style="height: 50%;">
+                        <div style="display: flex; justify-content: space-between; align-items: top;">
+                            <div>
+                                <div id="joy_left" style="width: 150px; height: 150px; border-color: black;"></div>
+                                <div style="text-align: center;">x: {{joy_left_data.x}}</div>
+                                <div style="text-align: center;">y: {{joy_left_data.y}}</div>
+                            </div>
+                            <div style="margin-top: 16px;">
+                                <i class="fas fa-home" @click="click_home"
+                                    style="border: 1px solid black; border-radius: 15px; padding: 3px;"></i>
+                            </div>
+                            <div>
+                                <div id="joy_right" style="width: 150px; height: 150px;"></div>
+                                <div style="text-align: center;">x: {{joy_right_data.x}}</div>
+                                <div style="text-align: center;">y: {{joy_right_data.y}}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+	</body>
+</html>
+
+<script src="https://unpkg.com/vue@3"></script>
+<script src="../javascripts/joy.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.0/socket.io.min.js"></script>
+
+<script>
+    var app = Vue.createApp({
+        data() {
+            return {
+                height: 0,
+                value: 0,
+                joy_left: null,
+                joy_left_data: {
+                    x: 0,
+                    y: 0,
+                },
+                
+                joy_right: null,
+                joy_right_data: {
+                    x: 0,
+                    y: 0,
+                },
+                dht: {
+                    humidity: 0,
+                    temperature: 0,
+                },
+				position: {
+					latitude: 0,
+					longitude: 0,
+				},
+            }
+        },
+        methods: {
+            click_home: function() {
+                let vm = this;
+                let result = confirm("해당 탐지로봇을 귀환시키겠습니까?");
+                if(result) {
+
+                }
+            },
+        },
+        mounted: function() {
+            let vm = this;
+            vm.height = window.innerHeight;
+            console.log("height:", vm.height);
+            vm.joy_left = new JoyStick('joy_left', {
+                internalFillColor: 'black',
+                internalStrokeColor: 'black',
+                externalStrokeColor: 'black',
+            }, (data) => {
+                vm.joy_left_data.x = data.x;
+                vm.joy_left_data.y = data.y;
+            });
+            vm.joy_right = new JoyStick('joy_right', {
+                internalFillColor: 'black',
+                internalStrokeColor: 'black',
+                externalStrokeColor: 'black',
+            }, (data) => {
+                vm.joy_right_data.x = data.x;
+                vm.joy_right_data.y = data.y;
+            });
+
+        	const socket = io();
+            socket.on('/client/read_dht', (data) => {
+                vm.dht = data;
+            }); 
+			
+			socket.on('/client/read_image', (data) => {
+				vm.$refs.cam.src = `data:image/;base64,${data}`;
+            }); 
+
+            if (navigator.geolocation) { // GPS를 지원하면
+                navigator.geolocation.getCurrentPosition((position) => {
+					vm.position.latitude = position.coords.latitude;
+					vm.position.longitude = position.coords.longitude;
+					setInterval(() => {
+						vm.position.latitude = position.coords.latitude;
+						vm.position.longitude = position.coords.longitude;
+					}, 1000);
+					
+                }, function(error) {
+                    console.error(error);
+                }, {
+                    enableHighAccuracy: false,
+                    maximumAge: 0,
+                    timeout: Infinity
+                });
+            } else {
+                alert('GPS를 지원하지 않습니다');
+            }
+        },
+    }).mount('#app');
+</script>

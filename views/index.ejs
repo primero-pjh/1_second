@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html style="overflow: hidden; width: 100%;">
+	<head>
+        <meta name="viewport" content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, width=device-width" />
+		<title>탐지로봇 CTR</title>
+        <link href="./stylesheets/style.css?ver=1.0" rel="stylesheet" type="text/css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/all.min.css" />
+	</head>
+	<body style="position: relative; margin: 0; background-color: white;">
+        <div style="padding: 16px;">
+            <div id="app" style="width: 100%;">
+                <div class="w100p bg-default" :style="{height: height + 'px'}" 
+                    style="border: 1px solid black;
+                        border-radius: 0 0 62px 0;">
+                    <div style="display: flex; height: 27px; width: 100%; 
+                        border-bottom: 3px solid #A8B1AB;">
+                        <div style="width: 30px; height: 27px; border-right: 3px solid #A8B1AB;"></div>
+                        <div style="width: 100%;"></div>
+                        <div style="width: 30px; height: 27px; border-left: 3px solid #A8B1AB;"></div>
+                    </div>
+                    <div style="padding: 24px 24px 0px 24px;">
+                        <div class="bg-monitor" style="position: relative; height: 222px; border-radius: 7px 7px 28px 7px;">
+                            <p style="width: 8px; height: 8px; position: absolute; top: 60px; left: 15px;
+                                background-color: black; border-radius: 15px;"></p>
+                            <!-- <p style="text-align: center; margin: 0; color: white;">DOT MATRIX WITH STREO SOUND</p> -->
+                            <img src="./images/이미지_6-removebg-preview.png" style="width: 295px; height: 24px; position: absolute;" />
+                            <div style="padding: 24px 38px; text-align: center;">
+                                <template v-if="is_show">
+                                    <div style="position: absolute; top: 24px; width: 100%;">
+                                        <div style="display: flex; padding: 0 8px;">
+                                            <div>
+                                                <p style="color: white; font-size: 12px; margin: 0;">temp: {{dht.temperature}} C hum: {{dht.humidity}} %</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <img style="width: 220px; height: 157px; border: 1px solid black; background-color: black;" ref="cam" />
+                                    <div style="position: absolute; bottom: 44px; width: 100%;">
+                                        <div style="display: flex; padding: 0 8px;">
+                                            <p style="color: white; font-size: 12px; margin: 0;">
+                                                lat: {{position.latitude}} long: {{position.longitude}}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template v-else>
+                                    <img src="./images/KzGr5b.gif" style="width: 220px; height: 157px; border: 1px solid black;" />
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <img src="./images/로고-removebg-preview.png" style="width: 267px;"/>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: top;
+                        margin-top: 8px;">
+                        <div>
+                            <div id="joy_left" style="width: 150px; height: 150px; border-color: black;"></div>
+                            <!-- <div style="text-align: center;">x: {{joy_left_data.x}}</div>
+                            <div style="text-align: center;">y: {{joy_left_data.y}}</div> -->
+                        </div>
+                        <div>
+                            <div id="joy_right" style="width: 150px; height: 150px;"></div>
+                            <!-- <div style="text-align: center;">x: {{joy_right_data.x}}</div>
+                            <div style="text-align: center;">y: {{joy_right_data.y}}</div> -->
+                        </div>
+                    </div>
+                    <div style="text-align: center;">
+                        <i class="fas fa-home" @click="click_home"
+                            style="border: 1px solid black; border-radius: 20px; padding: 3px; margin-right: 8px;"></i>
+                        <i class="fas fa-home" @click="is_show=!is_show"
+                            style="border: 1px solid black; border-radius: 20px; padding: 3px;"></i>
+                    </div>
+                    <div style="text-align: right;">
+                        <!-- <p style="margin: 0;">1_SECOND</p> -->
+                        <img src="./images/이미지_12-removebg-preview.png" style="width: 120px; margin-right: 30px;"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+	</body>
+</html>
+
+<script src="https://unpkg.com/vue@3"></script>
+<script src="../javascripts/joy.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.0/socket.io.min.js"></script>
+
+<script>
+    const app = Vue.createApp({
+        data() {
+            return {
+                is_show: false,
+
+                height: 0,
+                value: 0,
+                joy_left: null,
+                joy_left_data: {
+                    x: 0,
+                    y: 0,
+                },
+                
+                joy_right: null,
+                joy_right_data: {
+                    x: 0,
+                    y: 0,
+                },
+                dht: {
+                    humidity: 0,
+                    temperature: 0,
+                },
+				position: {
+					latitude: 0,
+					longitude: 0,
+				},
+
+                prev_cam_data: '',
+                cam_data: '',
+            }
+        },
+        methods: {
+            click_home: function() {
+                let vm = this;
+                let result = confirm("해당 탐지로봇을 귀환시키겠습니까?");
+                if(result) {
+
+                }
+            },
+        },
+        mounted: function() {
+            let vm = this;
+            vm.height = window.innerHeight - 32;
+            vm.joy_left = new JoyStick('joy_left', {
+                internalFillColor: 'black',
+                internalStrokeColor: 'black',
+                externalStrokeColor: 'black',
+            }, (data) => {
+                vm.joy_left_data.x = data.x;
+                vm.joy_left_data.y = data.y;
+            });
+            vm.joy_right = new JoyStick('joy_right', {
+                internalFillColor: 'black',
+                internalStrokeColor: 'black',
+                externalStrokeColor: 'black',
+            }, (data) => {
+                vm.joy_right_data.x = data.x;
+                vm.joy_right_data.y = data.y;
+            });
+
+        	const socket = io();
+            socket.on('/client/read_dht', (data) => {
+                vm.dht = data;
+            }); 
+			
+			socket.on('/client/read_image', (data) => {
+                vm.is_show = true;
+                let cam_data = `data:image/;base64,${data}`;
+				vm.$refs.cam.src = cam_data;
+                if(vm.prev_cam_data != cam_data) {
+                    vm.prev_cam_data = cam_data;
+                }
+                vm.cam_data = cam_data;
+            }); 
+
+            // setInterval(() => {
+            //     if(vm.cam_data == vm.prev_cam_data) {
+            //         vm.is_show = false;
+            //     }
+            // }, 3000);
+
+            if (navigator.geolocation) { // GPS를 지원하면
+                navigator.geolocation.getCurrentPosition((position) => {
+					vm.position.latitude = position.coords.latitude;
+					vm.position.longitude = position.coords.longitude;
+					setInterval(() => {
+						vm.position.latitude = position.coords.latitude;
+						vm.position.longitude = position.coords.longitude;
+					}, 1000);
+					
+                }, (error) => {
+                    console.error("error:", error);
+                }, {
+                    enableHighAccuracy: false,
+                    maximumAge: 0,
+                    timeout: Infinity
+                });
+            } else {
+                alert('GPS를 지원하지 않습니다');
+            }
+        },
+    }).mount('#app');
+</script>
