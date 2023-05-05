@@ -21,6 +21,7 @@ app.set('port', port);
  */
 
 const server = http.createServer(app);
+let user_list = new Array();
 
 const io = require("socket.io")(server, {
 	cors: { 
@@ -47,7 +48,11 @@ function _arrayBufferToBase64( buffer ) {
 }
 
 io.on("connection", async (socket) => { 
-	//console.log("connection -> ", socket.id);
+	// console.log("connection -> ", socket.id);
+	user_list.push({
+		id: socket.id,
+		name: 'pritras',
+	});
 	socket.emit('connection', socket.id);
 	
 	/* RaspberryPI 에서 DHT11의 정보를 읽어온다 */
@@ -62,8 +67,21 @@ io.on("connection", async (socket) => {
 	socket.on("read_image", (data) => {
 		io.emit('/client/read_image', encode(data));
 	});
-	socket.on("disconnect", () => {
+
+	socket.on("/socket/get/user", async (data, callback) => {
+        callback({
+            success: 1,
+			user_list: user_list,
+        });
+        return;
+    });
+
+	/* disconnect */
+	socket.on('disconnect', () => {
 		let socketId = socket.id;
+		let idx = user_list.findIndex(x=>x.id == socketId);
+		user_list.splice(idx, 1);
+		//console.log("disconnect-socketId:", socketId);
 	});
 });
 

@@ -11,5 +11,8 @@ router.get('/bearing', function (req, res, next) {
 router.get('/admin', function (req, res, next) {
   res.render('admin', {});
 });
+router.get('/admin/login', function (req, res, next) {
+  res.render('admin/login', {});
+});
 
 module.exports = router;
