@@ -32,6 +32,11 @@
                 <q-drawer v-model="drawerLeft" class="bg-white text-black"
                     :width="200" :breakpoint="700" >
                     <q-list bordered separator >
+                        <q-item clickable v-ripple @click="tab='video'">
+                            <q-item-section class="text-bold">
+                                <q-item-label>영상 및 이미지 관리</q-item-label>
+                            </q-item-section>
+                        </q-item>
                         <q-item clickable v-ripple @click="tab='connect_socket'">
                             <q-item-section class="text-bold">
                                 <q-item-label>현재 접속한 소켓보기</q-item-label>
@@ -42,6 +47,7 @@
                                 <q-item-label>전체 모니터링</q-item-label>
                             </q-item-section>
                         </q-item>
+
                     </q-list>
                 </q-drawer>
     
@@ -127,11 +133,12 @@
             loadSocketList() {
                 let vm = this;
                 vm.socket_list = [];
-                vm.socket.emit('/socket/get/user', {
+                vm.socket.emit('/socket/rc', {
+                    type: 'rc',
                 }, (data, err) => {
-                    let row = data.user_list;
+                    let row = data.list;
+                    console.log("row:", row);
                     vm.socket_list = row;
-                    console.log("socket_list:", vm.socket_list);
                 });
             },
         },
@@ -142,7 +149,6 @@
             const socket = io();
             vm.socket = socket;
             vm.loadSocketList();
-            console.log("getCookie:", getCookie);
         },
     }).use(Quasar).mount('#app');
 </script>

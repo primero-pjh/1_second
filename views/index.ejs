@@ -5,11 +5,40 @@
 		<title>탐지로봇 CTR</title>
         <link href="./stylesheets/style.css?ver=1.0" rel="stylesheet" type="text/css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/all.min.css" />
+        <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons" rel="stylesheet" 
+            type="text/css">
+        <link href="https://cdn.jsdelivr.net/npm/quasar@2.11.10/dist/quasar.prod.css" rel="stylesheet" type="text/css">
 	</head>
 	<body style="position: relative; margin: 0; background-color: white;">
         <div style="padding: 16px;">
             <div id="app" style="width: 100%;">
-                <div class="w100p bg-default" :style="{height: height + 'px'}" 
+                <q-dialog v-model="showDialogSocket" full-width full-height persistent>    
+                    <q-card>
+                        <q-card-section>
+                            <div style="display :flex; justify-content: space-between;">
+                                <div class="text-h6">소켓 선택</div>
+                            </div>
+                        </q-card-section>
+                
+                        <q-card-section class="q-pt-none">
+                            <q-list bordered>
+                                <q-item v-if="socket_list.length == 0">
+                                    <q-item-section>접속한 소켓이 없습니다.</q-item-section>
+                                </q-item>
+                                <q-item clickable v-ripple v-for="row in socket_list"
+                                    @click="select_socket(row)">
+                                    <q-item-section>{{row.name}}</q-item-section>
+                                    <q-item-section avatar>
+                                        <q-avatar>
+                                            <img src="https://cdn.quasar.dev/img/boy-avatar.png">
+                                        </q-avatar>
+                                    </q-item-section>
+                                </q-item>
+                            </q-list>
+                        </q-card-section>
+                    </q-card>
+                </q-dialog>
+                <div class="w100p bg-default" :style="{height: height + 'px'}"
                     style="border: 1px solid black;
                         border-radius: 0 0 62px 0;">
                     <div style="display: flex; height: 27px; width: 100%; 
@@ -33,7 +62,8 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <img style="width: 220px; height: 157px; border: 1px solid black; background-color: black;" ref="cam" />
+                                    <img style="width: 220px; height: 157px; border: 1px solid black; 
+											background-color: black;" ref="cam" />
                                     <div style="position: absolute; bottom: 44px; width: 100%;">
                                         <div style="display: flex; padding: 0 8px;">
                                             <p style="color: white; font-size: 12px; margin: 0;">
@@ -77,17 +107,21 @@
                 </div>
             </div>
         </div>
+        
 	</body>
 </html>
 
 <script src="https://unpkg.com/vue@3"></script>
 <script src="../javascripts/joy.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.0/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quasar@2.11.10/dist/quasar.umd.prod.js"></script>
 
 <script>
     const app = Vue.createApp({
         data() {
             return {
+                showDialogSocket: true,
+                
                 is_show: false,
 
                 height: 0,
@@ -114,9 +148,46 @@
 
                 prev_cam_data: '',
                 cam_data: '',
+
+                left_execute: true,
+                right_execute: true,
+
+                socket_list: [
+                    { id: '', name: 'abc', password: '123', },
+                ],
+                socket: null,
             }
         },
         methods: {
+            select_socket: function(socket) {
+                let vm = this;
+                vm.$q.dialog({
+                    title: '비밀번호 확인',
+                    message: '해당 로봇의 비밀번호를 입력해주세요.',
+                    prompt: {
+                        model: '',
+                        type: 'text' // optional
+                    },
+                    cancel: true,
+                    persistent: true
+                }).onOk(password => {
+                    if(socket.password == password) {
+                        complete();
+                    } else {
+                        vm.$q.notify({
+                            icon: 'error',
+                            position: 'top',
+                            message: '비밀번호가 일치하지 않습니다.',
+                            color: 'negative'
+                        })
+                    }
+                });
+
+                function complete() {
+                    vm.socket = socket;
+                    vm.showDialogSocket = false;
+                }
+            },
             click_home: function() {
                 let vm = this;
                 let result = confirm("해당 탐지로봇을 귀환시키겠습니까?");
@@ -127,14 +198,23 @@
         },
         mounted: function() {
             let vm = this;
+            const socket = io();
+
+            socket.emit('/socket/rc', {}, (data, err) => {
+                vm.socket_list = data.list;
+            });
+
             vm.height = window.innerHeight - 32;
             vm.joy_left = new JoyStick('joy_left', {
                 internalFillColor: 'black',
                 internalStrokeColor: 'black',
                 externalStrokeColor: 'black',
             }, (data) => {
+                let x = data.x;
+                let y = data.y;
                 vm.joy_left_data.x = data.x;
                 vm.joy_left_data.y = data.y;
+                
             });
             vm.joy_right = new JoyStick('joy_right', {
                 internalFillColor: 'black',
@@ -145,7 +225,7 @@
                 vm.joy_right_data.y = data.y;
             });
 
-        	const socket = io();
+        	
             socket.on('/client/read_dht', (data) => {
                 vm.dht = data;
             }); 
@@ -153,7 +233,9 @@
 			socket.on('/client/read_image', (data) => {
                 vm.is_show = true;
                 let cam_data = `data:image/;base64,${data}`;
-				vm.$refs.cam.src = cam_data;
+				if(vm.$refs.cam) {
+					vm.$refs.cam.src = cam_data;
+				}
                 if(vm.prev_cam_data != cam_data) {
                     vm.prev_cam_data = cam_data;
                 }
@@ -185,6 +267,34 @@
             } else {
                 alert('GPS를 지원하지 않습니다');
             }
+
+            /* 0.5초 마다 socket 전송 */
+            setInterval(() => {
+                if(vm.joy_left_data.x != '0' || vm.joy_left_data.y != '0') {
+                    if(vm.joy_left_data.x == '100' ||
+                        vm.joy_left_data.x == '-100' ||
+                        vm.joy_left_data.y == '100' ||
+                        vm.joy_left_data.y == '-100'
+                    ) {
+					console.log(vm.joy_left_data);
+                        socket.emit('/socket/rc/move', vm.joy_left_data);    
+                    }
+                }
+            }, 500);
+			
+			/* 0.5초 마다 cam 전송 */
+            setInterval(() => {
+                if(vm.joy_right_data.x != '0' || vm.joy_right_data.y != '0') {
+                    if(vm.joy_right_data.x == '100' ||
+                        vm.joy_right_data.x == '-100' ||
+                        vm.joy_right_data.y == '100' ||
+                        vm.joy_right_data.y == '-100'
+                    ) {
+					console.log(vm.joy_right_data);
+                        socket.emit('/socket/cam/move', vm.joy_right_data);    
+                    }
+                }
+            }, 500);
         },
-    }).mount('#app');
+    }).use(Quasar).mount('#app');
 </script>

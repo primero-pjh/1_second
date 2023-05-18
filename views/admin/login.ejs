@@ -17,9 +17,9 @@
                         <q-img src="/images/img_gen_263595_jBhZcp_1.png"></q-img>
                     </div>
                     <div>
-                        <q-input label="아이디" placeholder="아이디를 입력하세요." dense
-                            :error="formError.userName?true:false" :error-message="formError.userName"></q-input>
-                        <q-input label="비밀번호" placeholder="비밀번호를 입력하세요." dense
+                        <q-input label="아이디" placeholder="아이디를 입력하세요." dense v-model="form.userId" @keyup.enter="login"
+                            :error="formError.userId?true:false" :error-message="formError.userId"></q-input>
+                        <q-input label="비밀번호" placeholder="비밀번호를 입력하세요." dense v-model="form.password" @keyup.enter="login" type="password"
                             :error="formError.password?true:false" :error-message="formError.password"></q-input>
                         <q-btn label="LOGIN" style="width: 100%;" 
                             color="primary"
@@ -34,21 +34,54 @@
 <script src="https://unpkg.com/vue@3"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.0/socket.io.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quasar@2.11.10/dist/quasar.umd.prod.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
 <script>
     const app = Vue.createApp({
         data() {
             return {
+				form: {
+					userId: '',
+					password: '',
+				},
                 formError: {
-                    userName: '',
+                    userId: '',
                     password: '',
                 }
             }
         },
         methods: {
+			clearError() {
+				let vm = this;
+				for(var k in vm.formError) {
+					vm.formError[k] = "";
+				}
+			},
             login() {
                 let vm = this;
-                setCookie('token', '1234');
-                window.location.href = '/admin';
+				vm.clearError();
+				axios.put(`/api/admin/login`, {
+					params: vm.form
+				}).then((res) => {
+					let data = res.data;
+					if(data.success) {
+						setCookie('token', '1234', 1); // 쿠키 기간 : 하루
+						window.location.href = '/admin';
+					} else { 
+						console.log(data);
+						if(data.hasOwnProperty('error')) {
+							vm.formError = data.error;
+						}
+						if(data.hasOwnProperty('message')) {
+							vm.$q.notify({
+								icon: 'error',
+								color: 'negative',
+								message: data.message,
+								position: 'top',
+							});
+						}
+					}
+				});
             },
             /* load */
             loadSocketList() {
@@ -58,7 +91,6 @@
                 }, (data, err) => {
                     let row = data.user_list;
                     vm.socket_list = row;
-                    console.log("socket_list:", vm.socket_list);
                 });
             },
         },

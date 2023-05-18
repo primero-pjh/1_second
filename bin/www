@@ -22,6 +22,7 @@ app.set('port', port);
 
 const server = http.createServer(app);
 let user_list = new Array();
+let user_dict = new Object();
 
 const io = require("socket.io")(server, {
 	cors: { 
@@ -49,10 +50,21 @@ function _arrayBufferToBase64( buffer ) {
 
 io.on("connection", async (socket) => { 
 	// console.log("connection -> ", socket.id);
-	user_list.push({
-		id: socket.id,
-		name: 'pritras',
-	});
+	let headers = socket.handshake.headers;
+	if(headers.hasOwnProperty('type')) {
+		let type = headers.type;
+		if(user_dict.hasOwnProperty(type) == false)  {
+			user_dict[type] = [];
+		}
+		if(user_dict.hasOwnProperty(type) == true)  {
+			user_dict[type].push({
+				id: socket.id,
+				name: headers.name,
+				type: headers.type,
+			});
+		}
+	}
+
 	socket.emit('connection', socket.id);
 	
 	/* RaspberryPI 에서 DHT11의 정보를 읽어온다 */
@@ -75,6 +87,29 @@ io.on("connection", async (socket) => {
         });
         return;
     });
+
+	/* rc car controll code */
+	socket.on("/socket/rc/move", async (data) => {
+		io.emit("/socket/rc/move", data);
+		return;
+	});
+
+	/* connection user return code */
+	socket.on("/socket/rc", async (data, callback) => {
+		let type = data.type;
+		let list = [];
+		if(user_dict.hasOwnProperty('type')) {
+			list = user_dict[type];
+			return callback({
+				list,
+			});
+		} else {
+			return callback({
+				list: [],
+			});
+		}
+		
+	});
 
 	/* disconnect */
 	socket.on('disconnect', () => {
@@ -129,11 +164,9 @@ function onError(error) {
   // handle specific listen errors with friendly messages
   switch (error.code) {
 	case 'EACCES':
-	  console.error(bind + ' requires elevated privileges');
 	  process.exit(1);
 	  break;
 	case 'EADDRINUSE':
-	  console.error(bind + ' is already in use');
 	  process.exit(1);
 	  break;
 	default:
