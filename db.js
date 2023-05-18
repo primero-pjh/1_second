@@ -1,5 +1,6 @@
 let cfg = require('./config.js');
 
+console.log("---db connect---");
 const knex = require('knex')({
     client: 'mysql',
     connection: {
@@ -9,5 +10,4 @@ const knex = require('knex')({
         database : cfg.database,
     }
 });
-
 module.exports = knex;
