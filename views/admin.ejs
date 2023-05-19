@@ -87,8 +87,12 @@
                                             <q-card>
                                                 <q-card-section>
                                                     <div class="text-h6">접속자 현황</div>
-                                                    <div id="chart_box">
-                                                        <canvas id="myChart" ref="myChart"></canvas>
+                                                    <div style="display: flex; justify-content: center;">
+                                                        <div style="width: 450px; ">
+                                                            <div id="chart_box">
+                                                                <canvas id="myChart" ref="myChart"></canvas>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </q-card-section>
                                             </q-card>
@@ -97,7 +101,7 @@
                                             <q-card>
                                                 <q-card-section>
                                                     <div>
-                                                        <div class="text-h6">접속 탐지로봇 리스트</div>
+                                                        <div class="text-h6">접속 탐지로봇 통계</div>
                                                         <div class="text-grey">
                                                             * 해당 탐지로봇을 클릭하면 아래 상세내용을 볼 수 있습니다. *
                                                         </div>
@@ -115,18 +119,16 @@
                                                                 <q-td key="name" :props="props">
                                                                     <div class="text-bold">{{ props.row.name }}</div>
                                                                 </q-td>
-                                                                <q-td key="temperature" :props="props">
-                                                                    <q-badge color="orange" text-color="white" 
-                                                                        :label="props.row.temperature" />
+                                                                <q-td key="connection_time" :props="props">
+                                                                    <template v-if="props.row.hasOwnProperty('connection_time')">
+                                                                        {{props.row.connection_time}}
+                                                                    </template>
+                                                                    <template v-else>
+                                                                        no connection
+                                                                    </template>
                                                                 </q-td>
-                                                                <q-td key="humidity" :props="props">
-                                                                    {{ props.row.humidity }}
-                                                                </q-td>
-                                                                <q-td key="latitude" :props="props">
-                                                                    {{ props.row.latitude }}
-                                                                </q-td>
-                                                                <q-td key="longitude" :props="props">
-                                                                    {{ props.row.longitude }}
+                                                                <q-td key="time" :props="props">
+                                                                    히히
                                                                 </q-td>
                                                             </q-tr>
                                                         </template>
@@ -140,7 +142,37 @@
                                             <q-card-section>
                                                 <template v-if="select_robot">
                                                     <div>
-                                                        <div class="text-h6">{{select_robot.name}}의 상세내역</div>
+                                                        <div class="text-h6">탐지로봇 {{select_robot.name}}의 상세내역</div>
+                                                        <div>
+                                                            <q-table class="my-sticky-header-column-table" flat bordered
+                                                                :rows="record_list"
+                                                                :columns="record_columns"
+                                                                row-key="name"
+                                                                :pagination="initialPagination">
+                                                                <template v-slot:body="props">
+                                                                    <q-tr :props="props">
+                                                                        <q-td key="name" :props="props">
+                                                                            {{ props.row.image }}
+                                                                        </q-td>
+                                                                        <q-td key="temperature" :props="props">
+                                                                            {{ props.row.temperature }}
+                                                                        </q-td>
+                                                                        <q-td key="humidity" :props="props">
+                                                                            {{ props.row.humidity }}
+                                                                        </q-td>
+                                                                        <q-td key="latitude" :props="props">
+                                                                            {{ props.row.latitude }}
+                                                                        </q-td>
+                                                                        <q-td key="longitude" :props="props">
+                                                                            {{ props.row.longitude }}
+                                                                        </q-td>
+                                                                        <q-td key="dateAdded" :props="props">
+                                                                            {{ props.row.dateAdded }}
+                                                                        </q-td>
+                                                                    </q-tr>
+                                                                </template>
+                                                            </q-table>
+                                                        </div>
                                                     </div>
                                                 </template>
                                                 <template v-else>
@@ -156,23 +188,28 @@
                                     <q-card-section>
                                         <div style="display: flex; flex-wrap: wrap;">
                                             <template v-for="socket in socket_list">
-                                                <q-card style="min-width: 270px;" class="q-mr-md q-mb-md">
+                                                <q-card style="min-width: 270px;" class="q-mr-md q-mb-md" v-if="socket.type == 'rc'">
                                                     <template v-if="socket.image">
                                                         <img :src="socket.image" style="width: 270px;" />
                                                     </template>
                                                     <template v-else>
-                                                        <q-img src="https://cdn.quasar.dev/img/parallax2.jpg">
-                                                            <div class="absolute-bottom">
-                                                                <div class="text-h6">{{socket.name}}</div>
+                                                        <div>
+                                                            <div style="width: 270px;
+                                                            height: 202px;">
+                                                            <span  class="text-h6" 
+                                                                style="position: absolute; top: 50%; left: 50%; 
+                                                                    transform: translate(-50%, -50%);">
+                                                                DISCONNECTION
+                                                            </span>
                                                             </div>
-                                                        </q-img>
+                                                        </div>
                                                     </template>
                                                     
                                               
                                                     <q-card-actions>
-                                                        <q-btn flat label="monitoring"></q-btn>
+                                                        <q-btn flat :label="socket.name"></q-btn>
                                                         <q-space></q-space>
-                                                        <q-btn flat color="negative" disable label="disconnect"></q-btn>
+                                                        <q-btn v-if="socket.image" flat color="negative" disable label="disconnect"></q-btn>
                                                     </q-card-actions>
                                                 </q-card>
                                             </template>
@@ -190,11 +227,10 @@
                                                     :columns="rc_columns"
                                                     row-key="name"
                                                     no-data-label="등록된 탐지로봇이 없습니다."
-                                                    @row-click="clickRow"
                                                     :pagination="initialPagination"
                                                 >
                                                     <template v-slot:body="props">
-                                                        <q-tr :props="props" @click="clickRow(props.row)">
+                                                        <q-tr :props="props">
                                                             <q-td key="name" :props="props">
                                                                 <div class="text-bold">{{ props.row.name }}</div>
                                                             </q-td>
@@ -225,7 +261,7 @@
 </html>
 <style>
     .my-sticky-header-column-table {
-        height: 495px;
+        min-height: 429px;
         /* max-width: 600px; */
     }
     .my-sticky-header-column-table thead tr:first-child th:first-child {
@@ -252,20 +288,30 @@
         data() {
             return {
                 ctx: null,
-                tab: 'monitoring',
+                // tab: 'monitoring',
+                tab: 'dashboards',
                 select_label: '대시보드',
                 select_robot: '',
                 height: 0,
                 socket: null,
 
-               
-
+                
                 rc_list: [],
                 rc_columns: [
                     { name: 'name', required: true, label: '탐지로봇명', align: 'left', field: 'name', sortable: true },
                     { name: 'dateAdded', align: 'left', label: '등록일', field: 'dateAdded', sortable: true },
                     { name: 'dateRecent', align: 'left', label: '최근접속일', field: 'dateRecent', sortable: true },
                     { name: 'buttons', align: 'left', label: '기능', field: '', sortable: false },
+                ],
+
+                record_list: [],
+                record_columns: [
+                    { name: 'image', align: 'left', label: '이미지', field: 'image', sortable: true },
+                    { name: 'temperature', align: 'left', label: '온도(temp)', field: 'temperature', sortable: true },
+                    { name: 'humidity', align: 'left', label: '습도(hum)', field: 'humidity', sortable: true },
+                    { name: 'latitude', align: 'left', label: '위도(lat)', field: 'latitude', sortable: true },
+                    { name: 'longitude', align: 'left', label: '경도(long)', field: 'longitude', sortable: true },
+                    { name: 'dateAdded', align: 'left', label: '날짜', field: 'dateAdded', sortable: true },
                 ],
                 initialPagination: {
                     sortBy: 'desc',
@@ -300,10 +346,8 @@
                 ],
                 columns: [
                     { name: 'name', required: true, label: '탐지로봇명', align: 'left', field: 'name', sortable: true },
-                    { name: 'temperature', align: 'left', label: '온도(temp)', field: 'temperature', sortable: true },
-                    { name: 'humidity', align: 'left', label: '습도(hum)', field: 'humidity', sortable: true },
-                    { name: 'latitude', align: 'left', label: '위도(lat)', field: 'latitude', sortable: true },
-                    { name: 'longitude', align: 'left', label: '경도(long)', field: 'longitude', sortable: true },
+                    { name: 'connection_time', align: 'left', label: '접속 시각', field: 'connection_time', sortable: true },
+                    { name: 'time', align: 'left', label: '경과 시간', field: 'time', sortable: false },
                 ],
 
                 drawerLeft: true,
@@ -323,7 +367,29 @@
             }
         },
         methods: {
-            clickRow(row) { this.select_robot = row; },
+            clickRow(row) { 
+                let vm = this;
+                vm.select_robot = row; 
+                let rcId = row.rcId;
+                if(rcId) {
+                    axios.get(`/api/record/rc/${rcId}`, {}).then((res) => {
+                        let data = res.data;
+                        if(data.success) {
+                            let row = data.record_list;
+                            vm.record_list = row;
+                        }
+                    });
+                } else {
+                    let name = row.name;
+                    axios.get(`/api/record/rc/name/${name}`, {}).then((res) => {
+                        let data = res.data;
+                        if(data.success) {
+                            let row = data.record_list;
+                            vm.record_list = row;
+                        }
+                    });
+                }
+            },
             clickTab(row) { 
                 let vm = this;
                 vm.tab = row.tab;
@@ -425,8 +491,8 @@
                             data: datas,
                         });
                     }
-                    let rc_list = user_dict['rc'];
-                    vm.loadRcList(rc_list);
+                    vm.rc_list = user_dict['rc'];
+                    // vm.loadRcList(rc_list);
                 });
             },
             loadRcList(rc_list) {
@@ -438,17 +504,17 @@
                     });
                 }
                 
-                axios.get(`/api/rc/name_list`, {
-                    params: {
-                        name_list: name_list.join(",")
-                    }
-                }).then((res) => {
-                    let data = res.data;
-                    if(data.success) {
-                        let row = data.rc_list;
-                        vm.rc_list = row;
-                    }
-                });
+                // axios.get(`/api/rc/name_list`, {
+                //     params: {
+                //         name_list: name_list.join(",")
+                //     }
+                // }).then((res) => {
+                //     let data = res.data;
+                //     if(data.success) {
+                //         let row = data.rc_list;
+                //         vm.rc_list = row;
+                //     }
+                // });
             }
         },
         mounted() {

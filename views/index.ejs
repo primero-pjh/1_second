@@ -21,7 +21,7 @@
                         </q-card-section>
                 
                         <q-card-section class="q-pt-none">
-                            <q-list bordered>
+                            <q-list bordered separator>
                                 <q-item v-if="socket_list.length == 0">
                                     <q-item-section>접속한 소켓이 없습니다.</q-item-section>
                                 </q-item>
@@ -205,6 +205,7 @@
 
                 }
             },
+
         },
         mounted: function() {
             let vm = this;
@@ -218,6 +219,7 @@
 
             socket.emit('/socket/rc', {}, (data, err) => {
                 vm.socket_list = data.rc_list;
+                console.log("socket_list:", vm.socket_list);
             });
 
             vm.height = window.innerHeight - 32;
@@ -261,6 +263,17 @@
                 vm.cam_data = cam_data;
             }); 
 
+            socket.on('/client/connection', (data) => {
+                if(data.hasOwnProperty('rc')) {
+                    vm.socket_list = [];
+                    let rc = data['rc'];
+                    vm.socket_list = rc;
+                }
+            });
+            socket.on('/client/disconnection', (data) => {
+                window.location.reload();
+            });
+
             // setInterval(() => {
             //     if(vm.cam_data == vm.prev_cam_data) {
             //         vm.is_show = false;
@@ -295,7 +308,7 @@
                         vm.joy_left_data.y == '100' ||
                         vm.joy_left_data.y == '-100'
                     ) {
-					console.log(vm.joy_left_data);
+					    // console.log(vm.joy_left_data);
                         socket.emit('/socket/rc/move', vm.joy_left_data);    
                     }
                 }
@@ -309,7 +322,7 @@
                         vm.joy_right_data.y == '100' ||
                         vm.joy_right_data.y == '-100'
                     ) {
-					console.log(vm.joy_right_data);
+					    // console.log(vm.joy_right_data);
                         socket.emit('/socket/cam/move', vm.joy_right_data);    
                     }
                 }

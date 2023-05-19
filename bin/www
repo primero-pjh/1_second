@@ -67,9 +67,11 @@ io.on("connection", async (socket) => {
 		}
 		if(type == 'admin') {
 			socket.join("admin");
+		} else if (type == 'client') {
+			socket.join("client");
 		}
-		console.log("user_dict:", user_dict);
 		io.to("admin").emit("/client/admin/connection");
+		io.to("client").emit("/client/connection", user_dict);
 	}
 
 	socket.emit('connection', socket.id);
@@ -105,10 +107,21 @@ io.on("connection", async (socket) => {
 
 	/* client에서 연결하고 비밀번호까지 인증하였을 때 */
 	socket.on("/socket/connect", async (data, callback) => {
-		console.log("data:", data);
+		let rc_idx = user_dict['rc'].findIndex(x=>x.id==data.other);
+		if(rc_idx >= 0) {
+			user_dict['rc'][rc_idx]['other'] = data.own;
+			let date = new Date();
+			date.setTime(date.getTime() + (9*60*60*1000));
+			user_dict['rc'][rc_idx]['connection_time'] = date;
+		}
+		let client_idx = user_dict['client'].findIndex(x=>x.id==data.own);
+		if(client_idx >= 0) {
+			user_dict['client'][client_idx]['other'] = data.other;
+		}
 		io.to(data.other).emit('/client/connect', {
 			socketId: data.own
 		});
+		io.to("admin").emit('/client/admin/connection');
 		return callback({
 			success: 1
 		});
@@ -142,10 +155,16 @@ io.on("connection", async (socket) => {
 		let socketId = socket.id;
 		let auth = socket.handshake.auth;
 		let idx = user_dict[auth.type].findIndex(x=>x.id == socketId);
+		let sck = '';
 		if(idx >= 0) {
+			sck = user_dict[auth.type][idx];
 			user_dict[auth.type].splice(idx, 1);
 		}
 		io.to("admin").emit("/client/admin/connection");
+		io.to("client").emit("/client/connection", user_dict);
+		if(sck.hasOwnProperty('other')) {
+			io.to(sck.other).emit("/client/disconnection");
+		}
 		//console.log("disconnect-socketId:", socketId);
 	});
 });

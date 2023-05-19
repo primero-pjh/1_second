@@ -15,7 +15,6 @@ router.get('/api/rc', async(req, res, next) => {
 
 router.get('/api/rc/name_list', async(req, res, next) => {
 	let name_list = req.query.name_list.split(",");
-	console.log("name_list:", name_list);
 	let rc_list = await knex.table("rc").whereIn("name", name_list);
 		
 	return res.json({
