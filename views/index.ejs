@@ -26,7 +26,7 @@
                                     <q-item-section>접속한 소켓이 없습니다.</q-item-section>
                                 </q-item>
                                 <q-item clickable v-ripple v-for="row in socket_list"
-                                    @click="select_socket(row)">
+                                    @click="selectSocket(row)">
                                     <q-item-section>{{row.name}}</q-item-section>
                                     <q-item-section avatar>
                                         <q-avatar>
@@ -120,6 +120,8 @@
     const app = Vue.createApp({
         data() {
             return {
+                socket: null,
+                select_socket: null,
                 showDialogSocket: true,
                 
                 is_show: false,
@@ -152,14 +154,11 @@
                 left_execute: true,
                 right_execute: true,
 
-                socket_list: [
-                    { id: '', name: 'abc', password: '123', },
-                ],
-                socket: null,
+                socket_list: [],
             }
         },
         methods: {
-            select_socket: function(socket) {
+            selectSocket(row) {
                 let vm = this;
                 vm.$q.dialog({
                     title: '비밀번호 확인',
@@ -171,7 +170,7 @@
                     cancel: true,
                     persistent: true
                 }).onOk(password => {
-                    if(socket.password == password) {
+                    if(row.password == password) {
                         complete();
                     } else {
                         vm.$q.notify({
@@ -179,13 +178,24 @@
                             position: 'top',
                             message: '비밀번호가 일치하지 않습니다.',
                             color: 'negative'
-                        })
+                        });
                     }
                 });
 
+                /* 연결완료 */
                 function complete() {
-                    vm.socket = socket;
-                    vm.showDialogSocket = false;
+                    let own = vm.socket.id;
+                    let other = row.id;
+                    vm.socket.emit('/socket/connect', {
+                        own,
+                        other,
+                    }, (data, err) => {
+                        if(data.success) {
+                            vm.showDialogSocket = false;
+                        } else {
+                            window.location.reload();
+                        }
+                    });
                 }
             },
             click_home: function() {
@@ -198,13 +208,22 @@
         },
         mounted: function() {
             let vm = this;
-            const socket = io();
+            const socket = io({
+                auth: {
+                    type: 'client',
+                }
+            });
+
+            vm.socket = socket;
 
             socket.emit('/socket/rc', {}, (data, err) => {
-                vm.socket_list = data.list;
+                vm.socket_list = data.rc_list;
             });
 
             vm.height = window.innerHeight - 32;
+            window.addEventListener('resize', function(){
+                vm.height = window.innerHeight - 32;
+            });
             vm.joy_left = new JoyStick('joy_left', {
                 internalFillColor: 'black',
                 internalStrokeColor: 'black',

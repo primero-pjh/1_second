@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <meta name="viewport" content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, width=device-width" />
+		<title>탐지로봇 CTR</title>
+        <link href="./stylesheets/style.css?ver=1.0" rel="stylesheet" type="text/css" />
+        <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons" rel="stylesheet" 
+            type="text/css">
+        <link href="https://cdn.jsdelivr.net/npm/quasar@2.11.10/dist/quasar.prod.css" rel="stylesheet" type="text/css">
+	</head>
+	<body>
+        <div id="app">
+            <div id="container">
+                <video autoplay="true" id="videoElement" ref="video"></video>
+                <canvas id="canvas" hidden></canvas>
+            </div>
+        </div>
+	</body>
+</html>
+
+<script src="/javascripts/common.js"></script>
+<script src="https://unpkg.com/vue@3"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.0/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quasar@2.11.10/dist/quasar.umd.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+    const app = Vue.createApp({
+        data() {
+            return {
+                socket: null,
+                other: '',
+            }
+        },
+        methods: {
+        },
+        mounted() {
+            let vm = this;
+            vm.height = window.innerHeight;
+
+            const socket = io({
+                auth: {
+                    type: "rc",
+                    name: "web-test",
+                    password: '1234',
+                }
+            });
+            vm.socket = socket;
+
+            socket.on("/client/connect", (data) => {
+                vm.other = data.socketId;
+            });
+
+            const video = document.querySelector("#videoElement");
+
+            if (navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true }).then( (stream) => { 
+                    video.srcObject = stream;
+                })
+                .catch(function (error) {
+                    console.log("Something went wrong!");
+                    return;
+                });
+            };
+
+            
+            setInterval(() => {
+                const canvas = document.getElementById('canvas');
+                canvas.width = 640;
+                canvas.height = 480;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+                const scale = 0.7;
+                const canvasValue = canvas.toDataURL('image/png', scale); // Base64 저장 - 0 ~ 1 퀄리티 범위
+                let base64 = canvasValue.split(',')[1];
+                if(vm.socket && vm.other) {
+                    vm.socket.emit('/socket/send/image', {
+                        other: vm.other,
+                        own: vm.socket.id,
+                        base64,
+                    });
+                } else {
+                }
+            }, 100);
+        },
+    }).use(Quasar).mount('#app');
+</script>

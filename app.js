@@ -29,6 +29,10 @@ app.use('/', require('./routes/index'));
 app.use('/users', require('./routes/users'));
 app.use('/', require('./routes/api/admin/login'));
 
+/* rc */
+app.use('/', require('./routes/api/rc/delete'));
+app.use('/', require('./routes/api/rc/get'));
+
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   next(createError(404));

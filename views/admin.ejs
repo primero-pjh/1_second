@@ -2,7 +2,7 @@
 <html>
 	<head>
         <meta name="viewport" content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, width=device-width" />
-		<title>탐지로봇 CTR</title>
+		<title>관리자 페이지</title>
         <link href="./stylesheets/style.css?ver=1.0" rel="stylesheet" type="text/css" />
         <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons" rel="stylesheet" 
             type="text/css">
@@ -34,7 +34,7 @@
                     <div style="height: 50px; display: flex; align-items: center;">
                         <div class="text-h6" style="padding-left: 18px;">1_SECOND</div>
                     </div>
-                    <q-list bordered class="rounded-borders">
+                    <q-list bordered separator class="rounded-borders">
                         <template v-for="(row, idx) in lefts">
                             <template v-if="row.childrens.length > 0">
                                 <q-expansion-item >
@@ -49,7 +49,7 @@
                             
                                     <q-card class="bg-dark text-white" style="padding: 0; margin: 0;">
                                         <q-card-section style="padding: 0; padding-left: 20px; margin: 0;">
-                                            <q-list bordered class="rounded-borders" style="padding: 0; margin: 0;">
+                                            <q-list bordered separator class="rounded-borders" style="padding: 0; margin: 0;">
                                                 <template v-for="item in row.childrens">
                                                     <q-item clickable @click="clickTab(item)">
                                                         <q-item-section avatar>
@@ -79,16 +79,16 @@
     
                 <q-page-container>
                     <q-page class="bg-grey-12 q-pa-sm" :style="{height: ( height - 50 )+'px'}">
-                        <q-tab-panels v-model="tab" animated  class="bg-grey-12">
+                        <q-tab-panels v-model="tab" animated  class="bg-grey-12" keep-alive>
                             <q-tab-panel name="dashboards">
                                 <div style="width: 100%;">
                                     <div class="row">
                                         <div class="col-6">
                                             <q-card>
                                                 <q-card-section>
-                                                    <div class="text-h6">접속 탐지로봇 현황</div>
-                                                    <div>
-                                                        chart
+                                                    <div class="text-h6">접속자 현황</div>
+                                                    <div id="chart_box">
+                                                        <canvas id="myChart" ref="myChart"></canvas>
                                                     </div>
                                                 </q-card-section>
                                             </q-card>
@@ -103,11 +103,12 @@
                                                         </div>
                                                     </div>
                                                     <q-table class="my-sticky-header-column-table" flat bordered
-                                                        :rows="rows"
+                                                        :rows="rc_list"
                                                         :columns="columns"
                                                         row-key="name"
                                                         no-data-label="현재 접속한 탐지로봇이 없습니다."
                                                         @row-click="clickRow"
+                                                        :pagination="initialPagination"
                                                     >
                                                         <template v-slot:body="props">
                                                             <q-tr :props="props" @click="clickRow(props.row)">
@@ -137,58 +138,82 @@
                                     <div class="row q-mt-md" style="width: 100%;" >
                                         <q-card style="width: 100%;">
                                             <q-card-section>
-                                                    <template v-if="select_robot">
-                                                        <div>
-                                                            <div class="text-h6">{{select_robot.name}}의 상세내역</div>
-                                                        </div>
-                                                    </template>
-                                                    <template v-else>
-                                                        <div class="text-h6 text-center">선택된 탐지로봇이 없습니다.</div>
-                                                    </template>
-                                                </q-card-section>
-                                            </q-card>
-                                        
+                                                <template v-if="select_robot">
+                                                    <div>
+                                                        <div class="text-h6">{{select_robot.name}}의 상세내역</div>
+                                                    </div>
+                                                </template>
+                                                <template v-else>
+                                                    <div class="text-h6 text-center">선택된 탐지로봇이 없습니다.</div>
+                                                </template>
+                                            </q-card-section>
+                                        </q-card>
                                     </div>
                                 </div>
                             </q-tab-panel>
                             <q-tab-panel name="monitoring">
-                                <div style="display: flex; flex-wrap: wrap;">
-                                    <template v-for="socket in socket_list">
-                                        <q-card style="min-width: 270px;" 
-                                            class="q-mr-md q-mb-md">
-                                            <q-img src="https://cdn.quasar.dev/img/parallax2.jpg">
-                                                <div class="absolute-bottom">
-                                                    <div class="text-h6">{{socket.id}}</div>
-                                                    <div class="text-subtitle2">{{socket.name}}</div>
-                                                </div>
-                                            </q-img>
-                                      
-                                            <q-card-actions>
-                                                <q-btn flat label="monitoring"></q-btn>
-                                                <q-btn flat color="negative" disable
-                                                    label="disconnect"></q-btn>
-                                            </q-card-actions>
-                                        </q-card>
-                                    </template>
-                                </div>
-                            </q-tab-panel>
-                            <q-tab-panel name="connect_socket">
-                                <div style="display: flex; flex-wrap: wrap;">
-                                    <template v-for="socket in socket_list">
-                                        <q-card style="min-width: 270px;" 
-                                            class="q-mr-md q-mb-md">
-                                            <q-img src="https://cdn.quasar.dev/img/parallax2.jpg"></q-img>
-                                            <q-card-actions>
-                                                <div style="display: flex; justify-content: space-between;
-                                                    align-items: center; width: 100%;">
-                                                    <div class="text-h6">{{socket.name}}</div>
-                                                    <div>
+                                <q-card>
+                                    <q-card-section>
+                                        <div style="display: flex; flex-wrap: wrap;">
+                                            <template v-for="socket in socket_list">
+                                                <q-card style="min-width: 270px;" class="q-mr-md q-mb-md">
+                                                    <template v-if="socket.image">
+                                                        <img :src="socket.image" style="width: 270px;" />
+                                                    </template>
+                                                    <template v-else>
+                                                        <q-img src="https://cdn.quasar.dev/img/parallax2.jpg">
+                                                            <div class="absolute-bottom">
+                                                                <div class="text-h6">{{socket.name}}</div>
+                                                            </div>
+                                                        </q-img>
+                                                    </template>
+                                                    
+                                              
+                                                    <q-card-actions>
+                                                        <q-btn flat label="monitoring"></q-btn>
+                                                        <q-space></q-space>
                                                         <q-btn flat color="negative" disable label="disconnect"></q-btn>
-                                                    </div>
-                                                </div>
-                                            </q-card-actions>
-                                        </q-card>
-                                    </template>
+                                                    </q-card-actions>
+                                                </q-card>
+                                            </template>
+                                        </div>
+                                    </q-card-section>
+                                </q-card>
+                            </q-tab-panel>
+                            <q-tab-panel name="rc_database">
+                                <q-card>
+                                    <q-card-section>
+                                        <div class="row">
+                                            <div class="col-12">
+                                                <q-table class="my-sticky-header-column-table" flat bordered
+                                                    :rows="rc_list"
+                                                    :columns="rc_columns"
+                                                    row-key="name"
+                                                    no-data-label="등록된 탐지로봇이 없습니다."
+                                                    @row-click="clickRow"
+                                                    :pagination="initialPagination"
+                                                >
+                                                    <template v-slot:body="props">
+                                                        <q-tr :props="props" @click="clickRow(props.row)">
+                                                            <q-td key="name" :props="props">
+                                                                <div class="text-bold">{{ props.row.name }}</div>
+                                                            </q-td>
+                                                            <q-td key="dateAdded" :props="props">
+                                                                {{ props.row.dateAdded }}
+                                                            </q-td>
+                                                            <q-td key="dateRecent" :props="props">
+                                                                {{ props.row.dateRecent }}
+                                                            </q-td>
+                                                            <q-td key="buttons" :props="props">
+                                                                <q-btn icon="delete" dense size="sm" color="negative" 
+                                                                    @click="delete_rc(props.row)"></q-btn>
+                                                            </q-td>
+                                                        </q-tr>
+                                                    </template>
+                                                </q-table>
+                                            </div>
+                                        </q-card-section>
+                                    </q-card>
                                 </div>
                             </q-tab-panel>
                         </q-tab-panels>
@@ -200,7 +225,7 @@
 </html>
 <style>
     .my-sticky-header-column-table {
-        height: 310px;
+        height: 495px;
         /* max-width: 600px; */
     }
     .my-sticky-header-column-table thead tr:first-child th:first-child {
@@ -220,24 +245,35 @@
 <script src="https://unpkg.com/vue@3"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.0/socket.io.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quasar@2.11.10/dist/quasar.umd.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 <script>
     const app = Vue.createApp({
         data() {
             return {
+                ctx: null,
+                tab: 'monitoring',
                 select_label: '대시보드',
                 select_robot: '',
                 height: 0,
                 socket: null,
 
-                columns: [
-                    {
-                        name: 'name', required: true, label: '탐지로봇명', align: 'left', field: 'name', sortable: true
-                    },
-                    { name: 'temperature', align: 'left', label: '온도(temp)', field: 'temperature', sortable: true },
-                    { name: 'humidity', align: 'left', label: '습도(hum)', field: 'humidity', sortable: true },
-                    { name: 'latitude', align: 'left', label: '위도(lat)', field: 'latitude', sortable: true },
-                    { name: 'longitude', align: 'left', label: '경도(long)', field: 'longitude', sortable: true },
+               
+
+                rc_list: [],
+                rc_columns: [
+                    { name: 'name', required: true, label: '탐지로봇명', align: 'left', field: 'name', sortable: true },
+                    { name: 'dateAdded', align: 'left', label: '등록일', field: 'dateAdded', sortable: true },
+                    { name: 'dateRecent', align: 'left', label: '최근접속일', field: 'dateRecent', sortable: true },
+                    { name: 'buttons', align: 'left', label: '기능', field: '', sortable: false },
                 ],
+                initialPagination: {
+                    sortBy: 'desc',
+                    descending: false,
+                    page: 1,
+                    rowsPerPage: 0,
+                },
+                
                 rows: [
                     {
                         name: 'primero',
@@ -262,16 +298,22 @@
                         longitude: 6.0,
                     },
                 ],
+                columns: [
+                    { name: 'name', required: true, label: '탐지로봇명', align: 'left', field: 'name', sortable: true },
+                    { name: 'temperature', align: 'left', label: '온도(temp)', field: 'temperature', sortable: true },
+                    { name: 'humidity', align: 'left', label: '습도(hum)', field: 'humidity', sortable: true },
+                    { name: 'latitude', align: 'left', label: '위도(lat)', field: 'latitude', sortable: true },
+                    { name: 'longitude', align: 'left', label: '경도(long)', field: 'longitude', sortable: true },
+                ],
 
-                tab: 'dashboards',
                 drawerLeft: true,
                 drawerRight: false,
 
                 lefts: [
-                    { icon: 'dashboard', tab: 'dashboards', label: '대시보드', childrens: [] },
-                    { icon: 'person', tab: 'user', label: '사용자 관리', childrens: [
-                        {icon: 'manage_accounts', tab: 'connect_socket', label: '현재 접속한 유저' },
-                        {icon: 'monitor', tab: 'monitoring', label: '모니터링' },
+                    { icon: 'dashboard', tab: 'dashboards', label: '대시보드', childrens: [], is_selected: true },
+                    { icon: 'person', tab: 'user', label: '사용자 관리', is_selected: false, childrens: [
+                        { icon: 'directions_car', tab: 'rc_database', label: 'RC Database', is_selected: true },
+                        { icon: 'monitor', tab: 'monitoring', label: '모니터링', is_selected: true },
                     ] },
                 ],
                 
@@ -281,30 +323,133 @@
             }
         },
         methods: {
-            clickRow(row) {
-                let vm = this;
-                this.select_robot = row;
-            },
+            clickRow(row) { this.select_robot = row; },
             clickTab(row) { 
-                this.tab = row.tab;
-                this.select_label = row.label;
+                let vm = this;
+                vm.tab = row.tab;
+                vm.select_label = row.label;
             },
             logout() {
                 setCookie('token', '');
                 window.location.href = '/admin/login';
             },
+
+            delete_rc(row) {
+                let vm = this;
+                vm.$q.dialog({
+                    title: '삭제',
+                    message: '정말 삭제하시겠어요?',
+                    cancel: true,
+                    persistent: true
+                }).onOk(() => {
+                    continue_delete_rc();
+                });
+
+                let rcId = row.rcId;
+                function continue_delete_rc() {
+                    axios.delete(`/api/rc/${rcId}`, {
+                        params: {
+                            rcId: row.rcId
+                        }
+                    }).then((res) => {
+                        let data = res.data;
+                        if(data.success) {
+                            vm.$q.notify({
+								icon: 'check',
+								color: 'positive',
+								message: data.message,
+								position: 'top',
+							});
+                            vm.loadRcList();
+                        } else {
+                            vm.$q.notify({
+								icon: 'error',
+								color: 'negative',
+								message: data.message,
+								position: 'top',
+							});
+                        }
+                    });
+                }
+                
+            },
+
+            set_chart_datas(rc, client, admin) {
+                let datas = {
+                    labels: [
+                        'RC',
+                        'CLIENT',
+                        'ADMIN'
+                    ],
+                    datasets: [{
+                        label: '접속수',
+                        data: [rc,client,admin],
+                        backgroundColor: [
+                            'rgb(255, 99, 132)',
+                            'rgb(54, 162, 235)',
+                            'rgb(255, 205, 86)'
+                        ],
+                        hoverOffset: 40
+                    }],
+                };
+                return datas;
+            },
+
             /* load */
-            loadSocketList() {
+            loadSocketList(type) {
                 let vm = this;
                 vm.socket_list = [];
-                vm.socket.emit('/socket/rc', {
-                    type: 'rc',
+                vm.socket.emit('/socket/get/user', {
                 }, (data, err) => {
-                    let row = data.list;
-                    console.log("row:", row);
-                    vm.socket_list = row;
+                    let user_dict = data.user_dict;
+                    vm.socket_list = [];
+                    for(var k in user_dict) {
+                        user_dict[k].map((x) => {
+                            vm.socket_list.push(x);
+                        });
+                    }
+
+                    if(type == 'reload') {
+                        const ctx = document.getElementById('myChart').remove();
+                        //<canvas id="myChart" ref="myChart"></canvas>
+                        const newCtx = document.createElement('canvas');
+                        newCtx.id = 'myChart';
+                        document.getElementById("chart_box").appendChild(newCtx);
+                        let datas = vm.set_chart_datas(
+                            user_dict.hasOwnProperty('rc') ? user_dict['rc'].length : 0,
+                            user_dict.hasOwnProperty('client') ? user_dict['client'].length : 0,
+                            user_dict.hasOwnProperty('admin') ? user_dict['admin'].length : 0,
+                        );
+                        vm.ctx = new Chart(newCtx, {
+                            type: 'pie',
+                            data: datas,
+                        });
+                    }
+                    let rc_list = user_dict['rc'];
+                    vm.loadRcList(rc_list);
                 });
             },
+            loadRcList(rc_list) {
+                let vm = this;
+                let name_list = [];
+                if(rc_list && rc_list.length > 0) {
+                    rc_list.map((x) => {
+                        name_list.push(x.name);
+                    });
+                }
+                
+                axios.get(`/api/rc/name_list`, {
+                    params: {
+                        name_list: name_list.join(",")
+                    }
+                }).then((res) => {
+                    let data = res.data;
+                    if(data.success) {
+                        let row = data.rc_list;
+                        vm.rc_list = row;
+                    }
+                });
+            }
         },
         mounted() {
             let vm = this;
@@ -318,13 +463,30 @@
                 return; 
             }
 
-            const socket = io();
+            const socket = io({
+                auth: {
+                    type: 'admin',
+                }
+            });
+
             vm.socket = socket;
             vm.loadSocketList();
+            
 
-            setInterval(() => {
-                vm.rows[0].temperature++;
-            }, 1000);
+            const ctx = document.getElementById('myChart');
+            let datas = vm.set_chart_datas(0,0,0);
+            vm.ctx = new Chart(ctx, {
+                type: 'pie',
+                data: datas,
+            });
+            
+            socket.on('/client/admin/connection', (data) => {
+                vm.loadSocketList('reload');
+            });
+            socket.on('/client/admin/read_image', (data) => {
+                let socket = vm.socket_list.find(x=>x.id==data.own);
+                socket["image"] = 'data:image/jpeg;base64,' + data.base64;
+            });
         },
     }).use(Quasar).mount('#app');
 </script>

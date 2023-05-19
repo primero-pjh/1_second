@@ -50,22 +50,31 @@ function _arrayBufferToBase64( buffer ) {
 
 io.on("connection", async (socket) => { 
 	// console.log("connection -> ", socket.id);
-	let headers = socket.handshake.headers;
-	if(headers.hasOwnProperty('type')) {
-		let type = headers.type;
+	let headers = socket.handshake;
+	let auth = socket.handshake.auth;
+	if(auth.hasOwnProperty('type')) {
+		let type = auth.type;
 		if(user_dict.hasOwnProperty(type) == false)  {
 			user_dict[type] = [];
 		}
 		if(user_dict.hasOwnProperty(type) == true)  {
 			user_dict[type].push({
 				id: socket.id,
-				name: headers.name,
-				type: headers.type,
+				name: auth.name,
+				type: auth.type,
+				password: auth.password,
 			});
 		}
+		if(type == 'admin') {
+			socket.join("admin");
+		}
+		console.log("user_dict:", user_dict);
+		io.to("admin").emit("/client/admin/connection");
 	}
 
 	socket.emit('connection', socket.id);
+
+	
 	
 	/* RaspberryPI 에서 DHT11의 정보를 읽어온다 */
 	socket.on("read_dht", (data) => {
@@ -79,14 +88,31 @@ io.on("connection", async (socket) => {
 	socket.on("read_image", (data) => {
 		io.emit('/client/read_image', encode(data));
 	});
-
+	/* RaspberryPI 에서 CAM의 정보를 특정 socket에게 전달한다. */
+	socket.on("/socket/send/image", (data) => {
+		// io.to(data.other).emit('/client/read_image', encode(data));
+		io.to(data.other).emit('/client/read_image', (data.base64));
+		io.to("admin").emit('/client/admin/read_image', data);
+	});
+	/* socket에 접속한 모든 유저를 들고온다 */
 	socket.on("/socket/get/user", async (data, callback) => {
         callback({
             success: 1,
-			user_list: user_list,
+			user_dict,
         });
         return;
     });
+
+	/* client에서 연결하고 비밀번호까지 인증하였을 때 */
+	socket.on("/socket/connect", async (data, callback) => {
+		console.log("data:", data);
+		io.to(data.other).emit('/client/connect', {
+			socketId: data.own
+		});
+		return callback({
+			success: 1
+		});
+	});
 
 	/* rc car controll code */
 	socket.on("/socket/rc/move", async (data) => {
@@ -97,15 +123,15 @@ io.on("connection", async (socket) => {
 	/* connection user return code */
 	socket.on("/socket/rc", async (data, callback) => {
 		let type = data.type;
-		let list = [];
-		if(user_dict.hasOwnProperty('type')) {
-			list = user_dict[type];
+		let rc_list = [];
+		if(user_dict.hasOwnProperty('rc')) {
+			rc_list = user_dict['rc'];
 			return callback({
-				list,
+				rc_list,
 			});
 		} else {
 			return callback({
-				list: [],
+				rc_list: [],
 			});
 		}
 		
@@ -114,8 +140,12 @@ io.on("connection", async (socket) => {
 	/* disconnect */
 	socket.on('disconnect', () => {
 		let socketId = socket.id;
-		let idx = user_list.findIndex(x=>x.id == socketId);
-		user_list.splice(idx, 1);
+		let auth = socket.handshake.auth;
+		let idx = user_dict[auth.type].findIndex(x=>x.id == socketId);
+		if(idx >= 0) {
+			user_dict[auth.type].splice(idx, 1);
+		}
+		io.to("admin").emit("/client/admin/connection");
 		//console.log("disconnect-socketId:", socketId);
 	});
 });

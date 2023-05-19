@@ -8,6 +8,9 @@ router.get('/', function(req, res, next) {
 router.get('/bearing', function (req, res, next) {
     res.render('bearing', {});
 });
+router.get('/rc', function (req, res, next) {
+  res.render('rc', {});
+});
 router.get('/admin', function (req, res, next) {
   res.render('admin', {});
 });
