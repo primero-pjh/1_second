@@ -190,6 +190,7 @@
                     vm.socket.emit('/socket/connect', {
                         own,
                         other,
+                        name: row.name,
                     }, (data, err) => {
                         if(data.success) {
                             vm.showDialogSocket = false;

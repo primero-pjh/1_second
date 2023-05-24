@@ -119,16 +119,19 @@
                                                                 <q-td key="name" :props="props">
                                                                     <div class="text-bold">{{ props.row.name }}</div>
                                                                 </q-td>
-                                                                <q-td key="connection_time" :props="props">
-                                                                    <template v-if="props.row.hasOwnProperty('connection_time')">
-                                                                        {{props.row.connection_time}}
+                                                                <q-td key="id" :props="props">
+                                                                    <div>{{ props.row.id }}</div>
+                                                                </q-td>
+                                                                <q-td key="connection_time_view" :props="props">
+                                                                    <template v-if="props.row.hasOwnProperty('connection_time_view')">
+                                                                        {{props.row.connection_time_view}}
                                                                     </template>
                                                                     <template v-else>
                                                                         no connection
                                                                     </template>
                                                                 </q-td>
                                                                 <q-td key="time" :props="props">
-                                                                    히히
+                                                                    {{props.row.time}}
                                                                 </q-td>
                                                             </q-tr>
                                                         </template>
@@ -223,7 +226,7 @@
                                         <div class="row">
                                             <div class="col-12">
                                                 <q-table class="my-sticky-header-column-table" flat bordered
-                                                    :rows="rc_list"
+                                                    :rows="rc_data_list"
                                                     :columns="rc_columns"
                                                     row-key="name"
                                                     no-data-label="등록된 탐지로봇이 없습니다."
@@ -295,7 +298,7 @@
                 height: 0,
                 socket: null,
 
-                
+                rc_data_list: [],
                 rc_list: [],
                 rc_columns: [
                     { name: 'name', required: true, label: '탐지로봇명', align: 'left', field: 'name', sortable: true },
@@ -320,33 +323,11 @@
                     rowsPerPage: 0,
                 },
                 
-                rows: [
-                    {
-                        name: 'primero',
-                        temperature: 159,
-                        humidity: 6.0,
-                        latitude: 24,
-                        longitude: 4.0,
-                    },
-                    {
-                        name: '탐지로봇2',
-                        temperature: 237,
-                        humidity: 9.0,
-                        latitude: 37,
-                        longitude: 4.3,
-                        classes: 'activeCell',
-                    },
-                    {
-                        name: '탐지로봇3',
-                        temperature: 262,
-                        humidity: 16.0,
-                        latitude: 23,
-                        longitude: 6.0,
-                    },
-                ],
+                rows: [],
                 columns: [
                     { name: 'name', required: true, label: '탐지로봇명', align: 'left', field: 'name', sortable: true },
-                    { name: 'connection_time', align: 'left', label: '접속 시각', field: 'connection_time', sortable: true },
+                    { name: 'id', align: 'left', label: '소켓번호', field: 'id', sortable: true },
+                    { name: 'connection_time_view', align: 'left', label: '접속 시각', field: 'connection_time_view', sortable: true },
                     { name: 'time', align: 'left', label: '경과 시간', field: 'time', sortable: false },
                 ],
 
@@ -491,30 +472,41 @@
                             data: datas,
                         });
                     }
-                    vm.rc_list = user_dict['rc'];
-                    // vm.loadRcList(rc_list);
+
+                    let row = user_dict['rc'];
+                    let endTime = new Date();
+
+                    row.map((x) => {
+                        if(x.connection_time) {
+                            let startTime = new Date(x.connection_time);
+                            x["connection_time_view"] = `${startTime.getFullYear()}-${startTime.getMonth() > 10 ? startTime.getMonth()+1 : "0"+(startTime.getMonth()+1)}-${startTime.getDate()} ${startTime.getHours()}:${startTime.getMinutes()}:${startTime.getSeconds()}`;
+                            let timeDiff = endTime.getTime() - startTime.getTime();
+                            timeDiff = timeDiff / 1000;
+                            // 분이 되지 못한 정수 값의 초를 얻기위해 % 연산자 사용
+                            let seconds = Math.floor(timeDiff % 60);
+                            // 결과 값이 한 자리면 0 패딩
+                            let secondsAsString = seconds < 10 ? "0" + seconds : seconds;
+                            timeDiff = Math.floor(timeDiff / 60);
+                            let minutes = timeDiff % 60;
+                            // 한자리면 0으로 패딩
+                            let minutesAsString = minutes < 10 ? "0" + minutes : minutes;
+                            x["time"] = `${minutesAsString}:${secondsAsString}`;
+                        }
+                    });
+                    vm.rc_list = row;
                 });
             },
             loadRcList(rc_list) {
                 let vm = this;
-                let name_list = [];
-                if(rc_list && rc_list.length > 0) {
-                    rc_list.map((x) => {
-                        name_list.push(x.name);
-                    });
-                }
-                
-                // axios.get(`/api/rc/name_list`, {
-                //     params: {
-                //         name_list: name_list.join(",")
-                //     }
-                // }).then((res) => {
-                //     let data = res.data;
-                //     if(data.success) {
-                //         let row = data.rc_list;
-                //         vm.rc_list = row;
-                //     }
-                // });
+
+                axios.get(`/api/rc`, {
+                }).then((res) => {
+                    let data = res.data;
+                    if(data.success) {
+                        let row = data.rc_list;
+                        vm.rc_data_list = row;
+                    }
+                });
             }
         },
         mounted() {
@@ -537,6 +529,7 @@
 
             vm.socket = socket;
             vm.loadSocketList();
+            vm.loadRcList();
             
 
             const ctx = document.getElementById('myChart');
@@ -553,6 +546,30 @@
                 let socket = vm.socket_list.find(x=>x.id==data.own);
                 socket["image"] = 'data:image/jpeg;base64,' + data.base64;
             });
+
+            setInterval(() => {
+                if(vm.rc_list.length > 0) {
+                    let row = vm.rc_list;
+                    let endTime = new Date();
+                    row.map((x) => {
+                        if(x.connection_time) {
+                            let startTime = new Date(x.connection_time);
+                            x["connection_time_view"] = `${startTime.getFullYear()}-${startTime.getMonth() > 10 ? startTime.getMonth()+1 : "0"+(startTime.getMonth()+1)}-${startTime.getDate()} ${startTime.getHours()}:${startTime.getMinutes()}:${startTime.getSeconds()}`;
+                            let timeDiff = endTime.getTime() - startTime.getTime();
+                            timeDiff = timeDiff / 1000;
+                            // 분이 되지 못한 정수 값의 초를 얻기위해 % 연산자 사용
+                            let seconds = Math.floor(timeDiff % 60);
+                            // 결과 값이 한 자리면 0 패딩
+                            let secondsAsString = seconds < 10 ? "0" + seconds : seconds;
+                            timeDiff = Math.floor(timeDiff / 60);
+                            let minutes = timeDiff % 60;
+                            // 한자리면 0으로 패딩
+                            let minutesAsString = minutes < 10 ? "0" + minutes : minutes;
+                            x["time"] = `${minutesAsString}:${secondsAsString}`;
+                        }
+                    });
+                }
+            }, 1000);
         },
     }).use(Quasar).mount('#app');
 </script>
